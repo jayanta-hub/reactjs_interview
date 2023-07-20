@@ -4,92 +4,106 @@ import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import { Button, Form } from "react-bootstrap";
 import { v4 as uuid } from "uuid";
-
+import Comment from "./presentation/components/Comment";
 const App = () => {
   const [commentInput, setCommentInput] = useState("");
-  const [replayInput, setReplayInput] = useState("");
-  const [id, setId] = useState(1);
   const [isReplyClick, setIsReplyClick] = useState(false);
   const [commentMessage, setCommentMessage] = useState([]);
   const unique_id = uuid();
   const small_id = unique_id.slice(0, 8);
   const AddCommenthanlder = () => {
-    let data = {
+    let newComment = {
       id: small_id,
       message: commentInput,
       isReplyClick: false,
-      replay: [],
+      replies: [],
     };
-    setCommentMessage([...commentMessage, data]);
-    setId((p) => p + 1);
+    setCommentMessage((prevComments) => [...prevComments, newComment]);
     setCommentInput("");
   };
   const IsReplyCheck = (id) => {
-    let filterData = commentMessage;
-    filterData.forEach((value, inx) => {
-      if (value.replay.length > 0) {
-        value.replay.forEach((item, ind) => {
-          filterData[inx].replay[ind].isReplyClick = false;
-        });
-      }
-      if (value.id === id) {
-        filterData[inx].isReplyClick = !value.isReplyClick;
-      } else {
-        console.log("ass");
-        filterData[inx].isReplyClick = false;
-      }
-    });
-    setCommentMessage(filterData);
-    setIsReplyClick(!isReplyClick);
-  };
-  const IsSubReplyCheck = (id) => {
-    let filterData = commentMessage;
-    filterData.forEach((value, inx) => {
-      if (value.replay.length > 0) {
-        value.replay.forEach((item, ind) => {
-          if (item.id === id) {
-            filterData[inx].replay[ind].isReplyClick = !item.isReplyClick;
-            filterData[inx].isReplyClick = false;
-          } else {
-            filterData[inx].replay[ind].isReplyClick = false;
-            filterData[inx].isReplyClick = false;
+    const updateIsReplyCheck = (comments) => {
+      return comments.map((comment) => {
+        if (comment.id === id) {
+          if (comment.replies.length > 0) {
+            return {
+              ...comment,
+              isReplyClick: !comment.isReplyClick,
+              replies: updateIsReplyCheck(comment.replies),
+            };
           }
-        });
-      } else {
-        console.log("ass");
-        filterData[inx].isReplyClick = false;
-      }
-    });
-    setCommentMessage(filterData);
+          return {
+            ...comment,
+            isReplyClick: !comment.isReplyClick,
+          };
+        }
+        if (comment.replies.length > 0) {
+          return {
+            ...comment,
+            isReplyClick: false,
+            replies: updateIsReplyCheck(comment.replies),
+          };
+        }
+        if (comment.id !== id) {
+          return {
+            ...comment,
+            isReplyClick: false,
+          };
+        }
+
+        return comment;
+      });
+    };
+    setCommentMessage(updateIsReplyCheck(commentMessage));
     setIsReplyClick(!isReplyClick);
   };
-  const ReplayHanlder = (id) => {
-    let data = commentMessage;
-    data?.forEach((item, index) => {
-      if (item.id === id) {
-        data[index].isReplyClick = !item.isReplyClick;
-        data[index].replay.push({
-          id: small_id,
-          message: replayInput,
-          isReplyClick: false,
-          replay: [],
-          parentId: id,
-        });
-      } else {
-      }
-    });
-    setId((p) => p + 1);
-    setCommentMessage([...data]);
+  const ReplayHanlder = (id, text) => {
+    const newReply = {
+      id: small_id,
+      message: text,
+      isReplyClick: false,
+      replies: [],
+    };
+
+    const updateComments = (commentMessage) => {
+      return commentMessage.map((comment) => {
+        if (comment.id === id) {
+          return {
+            ...comment,
+            isReplyClick: !comment.isReplyClick,
+            replies: [...comment.replies, newReply],
+          };
+        }
+        if (comment.replies.length > 0) {
+          return {
+            ...comment,
+            replies: updateComments(comment.replies),
+          };
+        }
+        return comment;
+      });
+    };
+    setCommentMessage((prevComments) => updateComments(prevComments));
   };
-  const DeleteHanlder = (id) => {
-    let filterData = commentMessage?.filter((item, index) => item.id !== id);
-    setCommentMessage(filterData);
+  const deleteComment = (commentId) => {
+    const deleteCommentRecursive = (comments) => {
+      return comments.filter((comment) => {
+        if (comment.id === commentId) {
+          return false;
+        }
+        if (comment.replies.length > 0) {
+          comment.replies = deleteCommentRecursive(comment.replies);
+        }
+        return true;
+      });
+    };
+    setCommentMessage(deleteCommentRecursive);
   };
   return (
     <Container>
       <Row className="justify-content-md-center">
-        <Col xs lg="2"></Col>
-        <Col md="auto" lg={8}>
+        <Col xs={0} md={0} lg={2}></Col>
+        <Col xs={12} md={12} lg={8}>
           <Row className="mb-5">
             <Col lg={8}>
               <Form.Label htmlFor="inputPassword5">Comment Widget</Form.Label>
@@ -126,150 +140,19 @@ const App = () => {
               {commentMessage?.map((item, index) => {
                 return (
                   <>
-                    <div
-                      key={index}
-                      style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        justifyContent: "flex-start",
-                        alignItems: "center",
-                        gap: "2px",
-                        padding: "5px",
-                        // backgroundColor: "red",
-                      }}
-                    >
-                      <Form.Text muted style={{ alignSelf: "center" }}>
-                        {item?.message}
-                      </Form.Text>
-
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        onClick={() => {
-                          DeleteHanlder(item.id);
-                        }}
-                      >
-                        DELETE
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline-primary"
-                        onClick={() => IsReplyCheck(item.id)}
-                      >
-                        REPLY
-                      </Button>
-                    </div>
-                    {item?.isReplyClick ? (
-                      <div
-                        key={item.id}
-                        style={{
-                          display: "flex",
-                          flexDirection: "row",
-                          justifyContent: "flex-start",
-                          alignItems: "center",
-                          gap: "2px",
-                          padding: "5px",
-                          // backgroundColor: "red",
-                        }}
-                      >
-                        <Form.Control
-                          type="text"
-                          id="inputPassword5"
-                          aria-describedby="passwordHelpBlock"
-                          value={replayInput}
-                          onChange={(e) => {
-                            setReplayInput(e.target.value);
-                          }}
-                        />
-
-                        <Button
-                          size="sm"
-                          variant="outline-primary"
-                          onClick={() => ReplayHanlder(item.id)}
-                        >
-                          REPLY
-                        </Button>
-                      </div>
-                    ) : null}
-                    {item?.replay?.map((item) => {
-                      return (
-                        <>
-                          <div
-                            key={index}
-                            style={{
-                              display: "flex",
-                              flexDirection: "row",
-                              justifyContent: "flex-start",
-                              alignItems: "center",
-                              gap: "2px",
-                              padding: "5px",
-                              marginLeft: "50px",
-                              // backgroundColor: "red",
-                            }}
-                          >
-                            <Form.Text muted style={{ alignSelf: "center" }}>
-                              {item?.message}
-                            </Form.Text>
-
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              onClick={() => {
-                                DeleteHanlder(item.id);
-                              }}
-                            >
-                              DELETE
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-primary"
-                              onClick={() => IsSubReplyCheck(item.id)}
-                            >
-                              REPLY
-                            </Button>
-                          </div>
-                          {item?.isReplyClick ? (
-                            <div
-                              key={item.id}
-                              style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                justifyContent: "flex-start",
-                                alignItems: "center",
-                                gap: "2px",
-                                padding: "5px",
-                                marginLeft: "50px",
-                              }}
-                            >
-                              <Form.Control
-                                type="text"
-                                id="inputPassword5"
-                                aria-describedby="passwordHelpBlock"
-                                value={replayInput}
-                                onChange={(e) => {
-                                  setReplayInput(e.target.value);
-                                }}
-                              />
-
-                              <Button
-                                size="sm"
-                                variant="outline-primary"
-                                onClick={() => {}}
-                              >
-                                REPLY
-                              </Button>
-                            </div>
-                          ) : null}
-                        </>
-                      );
-                    })}
+                    <Comment
+                      comment={item}
+                      ReplayHanlder={ReplayHanlder}
+                      deleteComment={deleteComment}
+                      IsReplyCheck={IsReplyCheck}
+                    />
                   </>
                 );
               })}
             </Col>
           </Row>
         </Col>
-        <Col xs lg="2"></Col>
+        <Col xs={0} md={0} lg={2}></Col>
       </Row>
     </Container>
   );
